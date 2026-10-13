@@ -1,0 +1,116 @@
+name: build-and-deploy
+
+on:
+  push:
+    branches: [main, master]
+  workflow_dispatch:
+
+concurrency:
+  group: deploy-test
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+  packages: write
+
+jobs:
+  build-push:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    outputs:
+      image: ${{ steps.meta.outputs.image }}
+      tag: ${{ steps.meta.outputs.tag }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Meta
+        id: meta
+        run: |
+          image="ghcr.io/$(echo '${{ github.repository }}' | tr '[:upper:]' '[:lower:]')"
+          echo "tag=${GITHUB_SHA::7}" >> "$GITHUB_OUTPUT"
+          echo "image=${image}" >> "$GITHUB_OUTPUT"
+
+      - name: Login GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.repository_owner }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Set up Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build and push
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          push: true
+          tags: |
+            ${{ steps.meta.outputs.image }}:${{ steps.meta.outputs.tag }}
+            ${{ steps.meta.outputs.image }}:latest
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+  deploy:
+    needs: build-push
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    if: ${{ vars.ENABLE_DEPLOY == 'true' }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Meta
+        id: meta
+        env:
+          DEPLOY_PORT: ${{ secrets.DEPLOY_PORT }}
+        run: |
+          echo "deploy_port=${DEPLOY_PORT:-22}" >> "$GITHUB_OUTPUT"
+
+      - name: Upload compose to server
+        uses: appleboy/scp-action@v0.1.7
+        with:
+          host: ${{ secrets.DEPLOY_HOST }}
+          username: ${{ secrets.DEPLOY_USER }}
+          key: ${{ secrets.DEPLOY_SSH_KEY }}
+          port: ${{ steps.meta.outputs.deploy_port }}
+          source: docker-compose.yml
+          target: ${{ secrets.DEPLOY_PATH }}
+
+      - name: Pull, restart, health, prune
+        uses: appleboy/ssh-action@v1.2.0
+        env:
+          IMAGE_NAME: ${{ needs.build-push.outputs.image }}
+          IMAGE_TAG: ${{ needs.build-push.outputs.tag }}
+          HOST_PORT: ${{ secrets.HOST_PORT }}
+          DEPLOY_PATH: ${{ secrets.DEPLOY_PATH }}
+          GHCR_USER: ${{ github.repository_owner }}
+          GHCR_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          host: ${{ secrets.DEPLOY_HOST }}
+          username: ${{ secrets.DEPLOY_USER }}
+          key: ${{ secrets.DEPLOY_SSH_KEY }}
+          port: ${{ steps.meta.outputs.deploy_port }}
+          envs: IMAGE_NAME,IMAGE_TAG,HOST_PORT,DEPLOY_PATH,GHCR_USER,GHCR_TOKEN
+          script: |
+            set -euo pipefail
+            HOST_PORT="${HOST_PORT:-80}"
+            DEPLOY_PATH="${DEPLOY_PATH:-/opt/panda-demo}"
+            echo "$GHCR_TOKEN" | docker login ghcr.io -u "$GHCR_USER" --password-stdin
+            mkdir -p "$DEPLOY_PATH"
+            printf 'IMAGE_NAME=%s\nIMAGE_TAG=%s\nHOST_PORT=%s\n' \
+              "$IMAGE_NAME" "$IMAGE_TAG" "$HOST_PORT" > "$DEPLOY_PATH/.env"
+            cd "$DEPLOY_PATH"
+            docker compose pull
+            docker compose up -d --remove-orphans --wait --wait-timeout 90
+            curl -fsS "http://127.0.0.1:${HOST_PORT}/health"
+            echo
+            docker image prune -f >/dev/null
+            docker container prune -f >/dev/null
+            docker images "$IMAGE_NAME" --format '{{.Repository}}:{{.Tag}}' \
+              | grep -v ':latest$' | grep -v ":${IMAGE_TAG}$" | tail -n +4 \
+              | xargs -r docker rmi 2>/dev/null || true
+            echo "deployed ${IMAGE_NAME}:${IMAGE_TAG}"

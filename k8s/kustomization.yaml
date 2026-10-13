@@ -1,0 +1,15 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+namespace: panda-demo
+
+resources:
+  - namespace.yaml
+  - deployment.yaml
+  - service.yaml
+
+# підставляється скриптом scripts/k8s-apply.sh
+images:
+  - name: IMAGE_PLACEHOLDER
+    newName: panda-web
+    newTag: latest

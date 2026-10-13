@@ -1,0 +1,128 @@
+:root {
+  --ink: #1a2218;
+  --mute: #5c6b56;
+  --paper: #eef2e8;
+  --leaf: #2f6b3a;
+  --leaf-deep: #1e4a28;
+  --wash: #d8e4cc;
+}
+
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+html,
+body {
+  min-height: 100%;
+}
+
+body {
+  font-family: "DM Sans", sans-serif;
+  color: var(--ink);
+  background: var(--paper);
+  display: grid;
+  place-items: center;
+  padding: 2rem;
+  position: relative;
+  overflow-x: hidden;
+}
+
+.bg {
+  position: fixed;
+  inset: 0;
+  background:
+    radial-gradient(ellipse 80% 60% at 10% 20%, var(--wash), transparent 55%),
+    radial-gradient(ellipse 70% 50% at 90% 80%, #c5d9b8, transparent 50%),
+    linear-gradient(165deg, #f4f7ef 0%, #e4ecda 45%, #d0dfc4 100%);
+  z-index: 0;
+}
+
+main {
+  position: relative;
+  z-index: 1;
+  max-width: 36rem;
+  animation: rise 0.7s ease-out both;
+}
+
+.brand {
+  font-family: "Fraunces", serif;
+  font-size: clamp(2.4rem, 6vw, 3.6rem);
+  font-weight: 700;
+  letter-spacing: -0.03em;
+  color: var(--leaf-deep);
+  line-height: 1.1;
+  margin-bottom: 1.25rem;
+}
+
+h1 {
+  font-family: "Fraunces", serif;
+  font-size: clamp(1.6rem, 4vw, 2.2rem);
+  font-weight: 500;
+  margin-bottom: 0.75rem;
+}
+
+.lead {
+  font-size: 1.05rem;
+  line-height: 1.55;
+  color: var(--mute);
+  max-width: 28rem;
+  margin-bottom: 2rem;
+}
+
+.meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem 1.5rem;
+  font-size: 0.9rem;
+  color: var(--mute);
+}
+
+#status {
+  color: var(--leaf);
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  font-size: 0.8rem;
+}
+
+#status::before {
+  content: "";
+  display: inline-block;
+  width: 0.5rem;
+  height: 0.5rem;
+  margin-right: 0.4rem;
+  border-radius: 50%;
+  background: var(--leaf);
+  vertical-align: middle;
+  animation: pulse 2.2s ease-in-out infinite;
+}
+
+@keyframes rise {
+  from {
+    opacity: 0;
+    transform: translateY(12px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes pulse {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.35;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  main,
+  #status::before {
+    animation: none;
+  }
+}

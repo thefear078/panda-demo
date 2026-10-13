@@ -1,0 +1,28 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Panda Demo</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:opsz,wght@9..40,400;9..40,600&family=Fraunces:opsz,wght@9..144,500;9..144,700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <div class="bg"></div>
+  <main>
+    <p class="brand">Panda Demo</p>
+    <h1>Працює.</h1>
+    <p class="lead">Тестовий стенд після деплою через Docker і CI/CD.</p>
+    <div class="meta">
+      <span id="status">online</span>
+      <span id="stamp"></span>
+    </div>
+  </main>
+  <script>
+    document.getElementById("stamp").textContent =
+      new Date().toLocaleString("uk-UA", { dateStyle: "medium", timeStyle: "short" });
+  </script>
+</body>
+</html>
